@@ -5,41 +5,77 @@ class HypercubeQ(object):
     """
     Hypercube Queueing Model
 
-    For the sake of simplication, 
+    * For the sake of simplication, 
     """
 
 
-    def __init__(self, n_atoms, Lam, Mu, T, P):
-        self.n_atoms = n_atoms                    # number of geographical atoms (response units)
-        self.Lam     = np.array(Lam, dytpe=float) # arrival rates vector: arrival rates for each atom
-        self.Mu      = np.array(Mu, dytpe=float)  # service rates vector: service rates for each response unit
-        self.T       = np.array(T, dytpe=float)   # traffic matrix:       average traffic time from atom i to atom j
-        self.P       = np.array(P, dtype=int)     # preference matrix:    preference matrix indicates the priority of response units to each atom
+    def __init__(self, n_atoms, Lam=None, Mu=None, T=None, P=None):
+        # Model configuration
+        # - number of geographical atoms (response units)
+        self.n_atoms = n_atoms                    
+        # - arrival rates vector: arrival rates for each atom
+        self.Lam     = np.array(Lam, dtype=float) if Lam is not None else np.random.rand(self.n_atoms)
+        # - service rates vector: service rates for each response unit
+        self.Mu      = np.array(Mu, dtype=float) if Mu is not None else np.random.rand(self.n_atoms)
+        # - traffic matrix:       average traffic time from atom i to atom j
+        self.T       = np.array(T, dtype=float) if T is not None else np.random.rand(self.n_atoms, self.n_atoms)
+        # - preference matrix:    preference matrix indicates the priority of response units to each atom
+        self.P       = np.array(P, dtype=int) if P is not None else np.random.rand(self.n_atoms, self.n_atoms).argsort()
 
         assert self.n_atoms == self.Lam.shape[0] == self.Mu.shape[0] == \
                self.T.shape[0] == self.T.shape[1] == self.P.shape[0] == self.P.shape[1], \
                "Invalid shape of input parameters."
-        
-        self.S = np.zeros((2 ** n_atoms, n_atoms))
+
+        # Model status
+        # - state space ordered as a sequence represents a complete unit-step tour of the hypercube
+        self.S      = self._tour(self)
+        # - transition rates matrix
+        self.Lam_ij = np.zeros((2 ** self.n_atoms, 2 ** self.n_atoms))
+        # - steady-state probability of states
+        self.Pi     = np.zeros(2 ** self.n_atoms)
 
     def _tour(self):
         """
-        In order to tour the hypercube in a unit-step manner.
+        Tour Algorithm
+
+        In order to tour the hypercube in a unit-step manner, one is confronted with the problem of 
+        generating a complete sequence S_1, S_2, ... of N-digit binary numbers, with 2^N unique 
+        members in the sequence and with adjacent members being exactly unit-Hamming distance apart. 
+        Such a sequence represents a complete unit-step tour of the hypercube.
         """
         # initialization
+        S      = np.zeros((2 ** self.n_atoms, self.n_atoms))
+        S[1,0] = 1    # S_0 = 0, S_1 = 1
         m, i        = 2, 2 # m: number of states that needs step backwards; i: index of the state
-        self.S[1,0] = 1    # S_0 = 0, S_1 = 1
         # add "one" at i-th position and step backwards
         for n in range(1, self.n_atoms):
-            self.S[i:i+m,n]  = 1                            # add "one" at i-th position
-            self.S[i:i+m,:n] = reverse(self.S[i-m/2,i, :n]) 
+            S[i:i+m,n]  = 1                                      # add "one" at i-th position
+            S[i:i+m,:n] = np.flip(S[int(i-m):i,:n], axis=0) # step backwards
+            i               += m                                      # update index of the state
+            m               *= 2                                      # update the number of states that needs step backwards
+        return S
+
+    def _transition_rates(self):
+        """
+        An efficient method for generating upward transition rates of the hypercube queueing model.
+        Ignoring ties for the moment
+        """
+        for i in range(1, len(2 ** self.n_atoms)):
+            s         = self.S[i]
+            last_s    = self.S[i-1]
+            # if transition (last_s -> s) is upward
+            if s.sum() - last_s.sum() == 1:
+
+    def _steady_state_probabilities(self):
+        """
+        """
+        pass
+
             
 
 
-
-
 if __name__ == "__main__":
-    n_atoms = 3
+    n_atoms = 5
     Lam     = [1, 1, 2]
     Mu      = [1, 1, 1]
     T       = [[.5, .1, .1], 
@@ -49,4 +85,6 @@ if __name__ == "__main__":
                [1, 0, 2],
                [2, 0, 1]]
 
-    HypercubeQ(n_atoms, Lam, Mu, T, P)
+    hq = HypercubeQ(n_atoms)
+    hq._tour()
+    print(hq.S)
