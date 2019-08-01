@@ -1,6 +1,6 @@
 import arrow
 import numpy as np
-from collection import defaultdict
+from collections import defaultdict
 
 class HypercubeQ(object):
     """
@@ -31,7 +31,7 @@ class HypercubeQ(object):
         # - state space ordered as a sequence represents a complete unit-step tour of the hypercube
         self.S      = self._tour()
         # - upward transition rates matrix: a dictionary { (i,j) : lam_ij } (due to the sparsity of the matrix in nature)
-        self.Lam_ij = self._upward_transition_rates()
+        # self.Lam_ij = self._upward_transition_rates()
         # - steady-state probability of states
         self.Pi     = np.zeros(2 ** self.n_atoms)
 
@@ -64,17 +64,18 @@ class HypercubeQ(object):
 
         For each geographical atom j we shall tour the hypercube in a unit-step fashion. 
         """
-        Upn    = self.__upward_neighbor()
+        Upn    = self._upward_neighbor() 
         Lam_ij = defaultdict(lambda: 0)
+
         # iterative algorithm for generating upward transition rates
         for k in range(self.n_atoms):          # for each atom k
             for i in range(2 ** self.n_atoms): # for each state i
                 for j in Upn[i]:               # for each adjacent state j that d_ij^+ = 1
-                    Lam_ij[(i,j)] += self.Lam[k] 
+                    Lam_ij[(i,j)] += self.Lam[k]
 
         return Lam_ij
 
-    def __upward_neighbor(self):
+    def _upward_neighbor(self):
         """
         Helper function that collects the upward neighbors for each state of the hypercube, and 
         organizes them into a matrix where the key represents each state, and the value includes
@@ -83,11 +84,9 @@ class HypercubeQ(object):
         Upn = defaultdict(lambda: [])
         for i in range(2 ** self.n_atoms):
             for j in range(2 ** self.n_atoms):
-                if (self.S[j] - self.S[i]).sum() == 1:
+                if (self.S[j] - self.S[i]).min() >= 0 and (self.S[j] - self.S[i]).sum() == 1:
                     Upn[i].append(j)
         return Upn
-
-                    
 
     # def _steady_state_probabilities(self):
     #     """
@@ -95,11 +94,9 @@ class HypercubeQ(object):
     #     pass
 
             
-
-
 if __name__ == "__main__":
-    n_atoms = 5
-    Lam     = [1, 1, 2]
+    n_atoms = 3
+    Lam     = [1, 1, 1]
     Mu      = [1, 1, 1]
     T       = [[.5, .1, .1], 
                [.2, .2, .2],
@@ -108,6 +105,13 @@ if __name__ == "__main__":
                [1, 0, 2],
                [2, 0, 1]]
 
-    hq = HypercubeQ(n_atoms)
-    # hq._tour()
-    print(hq.S)
+    hq  = HypercubeQ(n_atoms, Lam)
+
+
+    # Upn = hq._upward_neighbor()
+    # print(hq.S[3])
+    # print("neighbors")
+    # for j in Upn[3]:
+    #     print(hq.S[j])
+
+    print(hq._upward_transition_rates())
