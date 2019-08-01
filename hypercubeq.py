@@ -1,5 +1,6 @@
 import arrow
 import numpy as np
+from collection import defaultdict
 
 class HypercubeQ(object):
     """
@@ -29,8 +30,8 @@ class HypercubeQ(object):
         # Model status
         # - state space ordered as a sequence represents a complete unit-step tour of the hypercube
         self.S      = self._tour()
-        # - transition rates matrix
-        self.Lam_ij = np.zeros((2 ** self.n_atoms, 2 ** self.n_atoms))
+        # - upward transition rates matrix: a dictionary { (i,j) : lam_ij } (due to the sparsity of the matrix in nature)
+        self.Lam_ij = self._upward_transition_rates()
         # - steady-state probability of states
         self.Pi     = np.zeros(2 ** self.n_atoms)
 
@@ -56,31 +57,37 @@ class HypercubeQ(object):
             m               *= 2                                      # update the number of states that needs step backwards
         return S
 
-    def _transition_rates(self, i, j):
+    def _upward_transition_rates(self):
         """
-        An efficient method for generating transition rates from state i to state j of the hypercube 
-        queueing model, including upward transitions (\lambda_ij, d_ij^+ = 1) and downward transitions 
-        (\lambda_ij, d_ij^- = 1).
+        An efficient method for generating upward transition rates from state i to state j of the  
+        hypercube queueing model.
+
+        For each geographical atom j we shall tour the hypercube in a unit-step fashion. 
         """
-        # if transition (i -> j) is upward
-        if self.S[j].sum() - self.S[i].sum() == 1:
-            upward_atom_id = np.where(self.S[j] - self.S[i] == 1)[0]
-            lam_ij         = 
-        # else transition (i -> j) is downward
-        elif self.S[j].sum() - self.S[i].sum() == -1:
+        Upn    = self.__upward_neighbor()
+        Lam_ij = defaultdict(lambda: 0)
+        # iterative algorithm for generating upward transition rates
+        for k in range(self.n_atoms):          # for each atom k
+            for i in range(2 ** self.n_atoms): # for each state i
+                for j in Upn[i]:               # for each adjacent state j that d_ij^+ = 1
+                    Lam_ij[(i,j)] += self.Lam[k] 
 
-        else:
-            raise Exception("state %d to state %d is a non unit step transition." % (i, j))
-        
+        return Lam_ij
 
-        # for i in range(1, len(2 ** self.n_atoms)):
-        #     s         = self.S[i]
-        #     last_s    = self.S[i-1]
-        #     # if transition (last_s -> s) is upward
-        #     if s.sum() - last_s.sum() == 1:
+    def __upward_neighbor(self):
+        """
+        Helper function that collects the upward neighbors for each state of the hypercube, and 
+        organizes them into a matrix where the key represents each state, and the value includes
+        its upward neighbors.
+        """
+        Upn = defaultdict(lambda: [])
+        for i in range(2 ** self.n_atoms):
+            for j in range(2 ** self.n_atoms):
+                if (self.S[j] - self.S[i]).sum() == 1:
+                    Upn[i].append(j)
+        return Upn
 
-        #     # else transition (last_s -> s) is downward
-        #     else:
+                    
 
     # def _steady_state_probabilities(self):
     #     """
