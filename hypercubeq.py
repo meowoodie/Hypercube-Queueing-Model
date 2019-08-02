@@ -78,7 +78,7 @@ class HypercubeQ(object):
         A iterative procedure for obtaining the steady state probability on the hypercube. In a manner
         similar to point Jacobi iteration, we use the equation of detailed balance to determine the 
         values at successive iterations. 
-
+s
         For S_0, S_{2^N-1} and S_Q (more than N customers in the system), the steady state probabilities can 
         be calculated as a normal M/M/N queue with infinite-line capacity.
         """
