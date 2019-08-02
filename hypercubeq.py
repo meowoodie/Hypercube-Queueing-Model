@@ -4,7 +4,7 @@ from collections import defaultdict
 
 class HypercubeQ(object):
     """
-    Hypercube Queueing Model
+    Hypercube Queueing Model with Infinite-line Capacity
 
     * For the sake of simplication, 
     """
@@ -31,8 +31,8 @@ class HypercubeQ(object):
         # - state space ordered as a sequence represents a complete unit-step tour of the hypercube
         self.S      = self._tour()
         # - upward transition rates matrix: a dictionary { (i,j) : lam_ij } (due to the sparsity of the matrix in nature)
-        # self.Lam_ij = self._upward_transition_rates()
-        # - steady-state probability of states
+        self.Lam_ij = self._upward_transition_rates()
+        # - steady-state probability for unsaturate states
         self.Pi     = np.zeros(2 ** self.n_atoms)
 
     def _tour(self):
@@ -50,10 +50,10 @@ class HypercubeQ(object):
         m, i   = 2, 2 # m: number of states that needs step backwards; i: index of the state
         # add "one" at i-th position and step backwards
         for n in range(1, self.n_atoms):
-            S[i:i+m,n]  = 1                                      # add "one" at i-th position
+            S[i:i+m,n]  = 1                                 # add "one" at i-th position
             S[i:i+m,:n] = np.flip(S[int(i-m):i,:n], axis=0) # step backwards
-            i               += m                                      # update index of the state
-            m               *= 2                                      # update the number of states that needs step backwards
+            i               += m                            # update index of the state
+            m               *= 2                            # update the number of states that needs step backwards
         return S
 
     def _upward_transition_rates(self):
@@ -63,23 +63,49 @@ class HypercubeQ(object):
 
         For each geographical atom j we shall tour the hypercube in a unit-step fashion. 
         """
-        Upoptn = self.__upward_optimal_neighbor()
-        Lam_ij = defaultdict(lambda: 0)
+        Upoptn = self.__upward_optimal_neighbor() # upward optimal neighbor matrix
+        Lam_ij = defaultdict(lambda: 0)           # upward transition rates dictionary initialization
 
         # iterative algorithm for generating upward transition rates
         for k in range(self.n_atoms):          # for each atom k
             for i in range(2 ** self.n_atoms): # for each state i
                 if self.S[i].sum() < self.n_atoms:
                     Lam_ij[(i,Upoptn[k,i])] += self.Lam[k]
-        
         return Lam_ij
 
-    def _upward_
+    def _steady_state_probabilities(self):
+        """
+        A iterative procedure for obtaining the steady state probability on the hypercube. In a manner
+        similar to point Jacobi iteration, we use the equation of detailed balance to determine the 
+        values at successive iterations. 
+
+        For S_0, S_{2^N-1} and S_Q (more than N customers in the system), the steady state probabilities can 
+        be calculated as a normal M/M/N queue with infinite-line capacity.
+        """
+        # 
+        def init_steady_state_prob():
+            return Pi
+        # point Jacobi iteration for states from S_1 to S_{2^N-2}
+        def iter_steady_state_prob(Pi_n):
+            # initialize the steady state probabilities Pi_{n+1} for the next iteration
+            Pi_n_1 = np.zeros(2 ** self.n_atoms)
+            for i in range(1, 2 ** self.n_atoms-1):
+                Pi_n_1[i] = #....
+            return Pi_n_1
+
+        max_iter = 100
+        Pi       = init_steady_state_prob()
+        Pi[0]    = ...
+        Pi[-1]   = ...
+        for n in range(max_iter):
+            Pi = iter_steady_state_prob(Pi)
+        
+        return Pi
 
     def __upward_optimal_neighbor(self):
         """
-        collects the upward optimal neighbor given atom k at state i according to the dispatch 
-        policy.
+        A function that collects the upward optimal neighbor given atom k at state i according 
+        to the dispatch policy.
         """
         # helper function that returns the state index given the state
         def state_index(s):
@@ -105,10 +131,6 @@ class HypercubeQ(object):
                     Upopts[k,i] = -1                 # for the last state, there is no upward neighbor
         return Upopts
 
-    # def _steady_state_probabilities(self):
-    #     """
-    #     """
-    #     pass
 
             
 if __name__ == "__main__":
@@ -128,16 +150,16 @@ if __name__ == "__main__":
 
 
     # * CHECK UPWARD TRANSITION RATES
-    # hq = HypercubeQ(n_atoms, Lam=Lam, Mu=Mu, P=P)
-    # print(hq.S)
-    # state_order = [0, 7, 3, 1, 4, 6, 2, 5]
-    # Lam_ij_dict = hq._upward_transition_rates()
-    # Lam_ij_mat  = np.zeros((2 ** hq.n_atoms, 2 ** hq.n_atoms))
-    # for key in Lam_ij_dict:
-    #     i = state_order.index(key[0])
-    #     j = state_order.index(key[1])
-    #     Lam_ij_mat[i,j] = Lam_ij_dict[key]
-    # print(Lam_ij_mat)
+    hq = HypercubeQ(n_atoms, Lam=Lam, Mu=Mu, P=P)
+    print(hq.S)
+    state_order = [0, 7, 3, 1, 4, 6, 2, 5]
+    Lam_ij_dict = hq._upward_transition_rates()
+    Lam_ij_mat  = np.zeros((2 ** hq.n_atoms, 2 ** hq.n_atoms))
+    for key in Lam_ij_dict:
+        i = state_order.index(key[0])
+        j = state_order.index(key[1])
+        Lam_ij_mat[i,j] = Lam_ij_dict[key]
+    print(Lam_ij_mat)
 
     # * CHECK UPWARD OPTIMAL NEIGHBORS
     # hq  = HypercubeQ(n_atoms, Lam=Lam, Mu=Mu, P=P)
