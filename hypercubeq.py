@@ -70,32 +70,34 @@ class HypercubeQ(object):
         # iterative algorithm for generating upward transition rates
         for k in range(self.n_atoms):          # for each atom k
             for i in range(2 ** self.n_atoms): # for each state i
-                for j in Upoptn[i]:            # for each adjacent state j that d_ij^+ = 1
-                    Lam_ij[(i,j)] += self.Lam[k]
+                Lam_ij[(i,Upoptn[k,i])] += self.Lam[k]
         
         return Lam_ij
 
     def _upward_optimal_neighbor(self):
         """
-        Helper function that collects the upward neighbors for each state of the hypercube, and 
-        organizes them into a matrix where the key represents each state, and the value includes
-        its upward neighbors.
+        collects the upward optimal neighbor given atom k at state i according to the dispatch 
+        policy.
         """
-        def 
-        Upopts = defaultdict(lambda: [])
-        for k in range(self.n_atoms):              # for each atom k
-            for i in range(2 ** self.n_atoms - 1): # for each state i (last state is excluded)
-                # if state j is the upward neighbor
-                # if (self.S[j] - self.S[i]).min() >= 0 and (self.S[j] - self.S[i]).sum() == 1:
-                idle_s  = np.where(S[i] == 0)[0] # indices of idle response units
-                order_s = self.P[k]              # ordered indices of response units for atom k according to dispatch policy 
-                for s in order_s:
+        # helper function that returns the state index given the state
+        def state_index(s):
+            for i in range(2 ** self.n_atoms):
+                if np.count_nonzero(s - self.S[i]) == 0:
+                    return i
+
+        Upopts = np.zeros((self.n_atoms, 2 ** self.n_atoms), dtype=int)
+        for k in range(self.n_atoms):                # for each atom k
+            for i in range(2 ** self.n_atoms):       # for each state i (last state is excluded)
+                idle_s = np.where(self.S[i] == 0)[0] # indices of idle response units
+                if len(idle_s) == 0:
+                disp_s = self.P[k]                   # ordered indices of response units for atom k according to dispatch policy 
+                for s in disp_s:
                     if s in idle_s:
-                        add    = np.zeros(self.n_atoms)
-                        add[s] = 1
-                        upopts = self.S[i] + add
-                        j      = 
-                Upopts[(i,k)].append()
+                        add         = np.zeros(self.n_atoms, dtype=int)
+                        add[s]      = 1
+                        upopts      = self.S[i] + add
+                        Upopts[k,i] = state_index(upopts)
+                        break
         return Upopts
 
     # def _steady_state_probabilities(self):
@@ -105,23 +107,34 @@ class HypercubeQ(object):
 
             
 if __name__ == "__main__":
-    n_atoms = 5
+    n_atoms = 3
+    # Lam     = [1, 1, 1, 1, 1]
+    # Mu      = [1, 1, 1, 1, 1]
+    # P       = [[0, 1, 2, 3, 4],
+    #            [1, 0, 2, 3, 4],
+    #            [2, 0, 1, 3, 4],
+    #            [3, 0, 1, 2, 4],
+    #            [4, 0, 1, 2, 3]]
     Lam     = [1, 1, 1]
     Mu      = [1, 1, 1]
-    T       = [[.5, .1, .1], 
-               [.2, .2, .2],
-               [.1, .5, .5]]
     P       = [[0, 1, 2],
                [1, 0, 2],
-               [2, 0, 1]]
+               [2, 0, 1],]
 
-    hq  = HypercubeQ(n_atoms)
+    # hq = HypercubeQ(n_atoms, Lam=Lam, Mu=Mu, P=P)
+    # print(hq.S)
+    # Lam_ij_dict = hq._upward_transition_rates()
+    # Lam_ij_mat  = np.zeros((2 ** hq.n_atoms, 2 ** hq.n_atoms))
+    # for key in Lam_ij_dict:
+    #     Lam_ij_mat[key[0], key[1]] = Lam_ij_dict[key]
+    # print(Lam_ij_mat)
 
-
-    Upn = hq._upward_neighbor()
-    print(hq.S[3])
+    hq  = HypercubeQ(n_atoms, Lam=Lam, Mu=Mu, P=P)
+    print(hq.S)
+    Upn = hq._upward_optimal_neighbor()
+    k   = 2
+    i   = 5
+    print(hq.S[i])
+    print(k)
     print("neighbors")
-    for j in Upn[3]:
-        print(hq.S[j])
-
-    # print(hq._upward_neighbor())
+    print(hq.S[Upn[k, i]])
