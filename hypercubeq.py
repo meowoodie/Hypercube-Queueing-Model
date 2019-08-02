@@ -48,7 +48,6 @@ class HypercubeQ(object):
         S      = np.zeros((2 ** self.n_atoms, self.n_atoms))
         S[1,0] = 1    # S_0 = 0, S_1 = 1
         m, i   = 2, 2 # m: number of states that needs step backwards; i: index of the state
-        
         # add "one" at i-th position and step backwards
         for n in range(1, self.n_atoms):
             S[i:i+m,n]  = 1                                      # add "one" at i-th position
@@ -64,17 +63,20 @@ class HypercubeQ(object):
 
         For each geographical atom j we shall tour the hypercube in a unit-step fashion. 
         """
-        Upoptn = self._upward_optimal_neighbor()
+        Upoptn = self.__upward_optimal_neighbor()
         Lam_ij = defaultdict(lambda: 0)
 
         # iterative algorithm for generating upward transition rates
         for k in range(self.n_atoms):          # for each atom k
             for i in range(2 ** self.n_atoms): # for each state i
-                Lam_ij[(i,Upoptn[k,i])] += self.Lam[k]
+                if self.S[i].sum() < self.n_atoms:
+                    Lam_ij[(i,Upoptn[k,i])] += self.Lam[k]
         
         return Lam_ij
 
-    def _upward_optimal_neighbor(self):
+    def _upward_
+
+    def __upward_optimal_neighbor(self):
         """
         collects the upward optimal neighbor given atom k at state i according to the dispatch 
         policy.
@@ -85,19 +87,22 @@ class HypercubeQ(object):
                 if np.count_nonzero(s - self.S[i]) == 0:
                     return i
 
+        # calculate upward optimal neighbors matrix
         Upopts = np.zeros((self.n_atoms, 2 ** self.n_atoms), dtype=int)
         for k in range(self.n_atoms):                # for each atom k
             for i in range(2 ** self.n_atoms):       # for each state i (last state is excluded)
                 idle_s = np.where(self.S[i] == 0)[0] # indices of idle response units
-                if len(idle_s) == 0:
-                disp_s = self.P[k]                   # ordered indices of response units for atom k according to dispatch policy 
-                for s in disp_s:
-                    if s in idle_s:
-                        add         = np.zeros(self.n_atoms, dtype=int)
-                        add[s]      = 1
-                        upopts      = self.S[i] + add
-                        Upopts[k,i] = state_index(upopts)
-                        break
+                if len(idle_s) != 0:
+                    disp_s = self.P[k]               # ordered indices of response units for atom k according to dispatch policy 
+                    for s in disp_s:
+                        if s in idle_s:
+                            add         = np.zeros(self.n_atoms, dtype=int)
+                            add[s]      = 1
+                            upopts      = self.S[i] + add
+                            Upopts[k,i] = state_index(upopts)
+                            break
+                else:
+                    Upopts[k,i] = -1                 # for the last state, there is no upward neighbor
         return Upopts
 
     # def _steady_state_probabilities(self):
@@ -119,22 +124,28 @@ if __name__ == "__main__":
     Mu      = [1, 1, 1]
     P       = [[0, 1, 2],
                [1, 0, 2],
-               [2, 0, 1],]
+               [2, 0, 1]]
 
+
+    # * CHECK UPWARD TRANSITION RATES
     # hq = HypercubeQ(n_atoms, Lam=Lam, Mu=Mu, P=P)
     # print(hq.S)
+    # state_order = [0, 7, 3, 1, 4, 6, 2, 5]
     # Lam_ij_dict = hq._upward_transition_rates()
     # Lam_ij_mat  = np.zeros((2 ** hq.n_atoms, 2 ** hq.n_atoms))
     # for key in Lam_ij_dict:
-    #     Lam_ij_mat[key[0], key[1]] = Lam_ij_dict[key]
+    #     i = state_order.index(key[0])
+    #     j = state_order.index(key[1])
+    #     Lam_ij_mat[i,j] = Lam_ij_dict[key]
     # print(Lam_ij_mat)
 
-    hq  = HypercubeQ(n_atoms, Lam=Lam, Mu=Mu, P=P)
-    print(hq.S)
-    Upn = hq._upward_optimal_neighbor()
-    k   = 2
-    i   = 5
-    print(hq.S[i])
-    print(k)
-    print("neighbors")
-    print(hq.S[Upn[k, i]])
+    # * CHECK UPWARD OPTIMAL NEIGHBORS
+    # hq  = HypercubeQ(n_atoms, Lam=Lam, Mu=Mu, P=P)
+    # print(hq.S)
+    # Upn = hq._upward_optimal_neighbor()
+    # k   = 2
+    # i   = 5
+    # print(hq.S[i])
+    # print(k)
+    # print("neighbors")
+    # print(hq.S[Upn[k, i]])
