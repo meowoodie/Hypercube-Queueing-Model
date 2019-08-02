@@ -64,29 +64,39 @@ class HypercubeQ(object):
 
         For each geographical atom j we shall tour the hypercube in a unit-step fashion. 
         """
-        Upn    = self._upward_neighbor() 
+        Upoptn = self._upward_optimal_neighbor()
         Lam_ij = defaultdict(lambda: 0)
 
         # iterative algorithm for generating upward transition rates
         for k in range(self.n_atoms):          # for each atom k
             for i in range(2 ** self.n_atoms): # for each state i
-                for j in Upn[i]:               # for each adjacent state j that d_ij^+ = 1
+                for j in Upoptn[i]:            # for each adjacent state j that d_ij^+ = 1
                     Lam_ij[(i,j)] += self.Lam[k]
-
+        
         return Lam_ij
 
-    def _upward_neighbor(self):
+    def _upward_optimal_neighbor(self):
         """
         Helper function that collects the upward neighbors for each state of the hypercube, and 
         organizes them into a matrix where the key represents each state, and the value includes
         its upward neighbors.
         """
-        Upn = defaultdict(lambda: [])
-        for i in range(2 ** self.n_atoms):
-            for j in range(2 ** self.n_atoms):
-                if (self.S[j] - self.S[i]).min() >= 0 and (self.S[j] - self.S[i]).sum() == 1:
-                    Upn[i].append(j)
-        return Upn
+        def 
+        Upopts = defaultdict(lambda: [])
+        for k in range(self.n_atoms):              # for each atom k
+            for i in range(2 ** self.n_atoms - 1): # for each state i (last state is excluded)
+                # if state j is the upward neighbor
+                # if (self.S[j] - self.S[i]).min() >= 0 and (self.S[j] - self.S[i]).sum() == 1:
+                idle_s  = np.where(S[i] == 0)[0] # indices of idle response units
+                order_s = self.P[k]              # ordered indices of response units for atom k according to dispatch policy 
+                for s in order_s:
+                    if s in idle_s:
+                        add    = np.zeros(self.n_atoms)
+                        add[s] = 1
+                        upopts = self.S[i] + add
+                        j      = 
+                Upopts[(i,k)].append()
+        return Upopts
 
     # def _steady_state_probabilities(self):
     #     """
@@ -95,7 +105,7 @@ class HypercubeQ(object):
 
             
 if __name__ == "__main__":
-    n_atoms = 3
+    n_atoms = 5
     Lam     = [1, 1, 1]
     Mu      = [1, 1, 1]
     T       = [[.5, .1, .1], 
@@ -105,13 +115,13 @@ if __name__ == "__main__":
                [1, 0, 2],
                [2, 0, 1]]
 
-    hq  = HypercubeQ(n_atoms, Lam)
+    hq  = HypercubeQ(n_atoms)
 
 
-    # Upn = hq._upward_neighbor()
-    # print(hq.S[3])
-    # print("neighbors")
-    # for j in Upn[3]:
-    #     print(hq.S[j])
+    Upn = hq._upward_neighbor()
+    print(hq.S[3])
+    print("neighbors")
+    for j in Upn[3]:
+        print(hq.S[j])
 
-    print(hq._upward_transition_rates())
+    # print(hq._upward_neighbor())
