@@ -11,21 +11,19 @@ class HypercubeQ(object):
     """
 
 
-    def __init__(self, n_atoms, Lam=None, Mu=None, T=None, P=None, max_iter=10):
+    def __init__(self, n_atoms, Lam=None, T=None, P=None, max_iter=10):
         # Model configuration
         # - number of geographical atoms (response units)
         self.n_atoms = n_atoms                    
         # - arrival rates vector: arrival rates for each atom
         self.Lam     = np.array(Lam, dtype=float) if Lam is not None else np.random.rand(self.n_atoms)
-        # - service rates vector: service rates for each response unit
-        self.Mu      = np.array(Mu, dtype=float) if Mu is not None else np.random.rand(self.n_atoms)
         # - traffic matrix:       average traffic time from atom i to atom j
         self.T       = np.array(T, dtype=float) if T is not None else np.random.rand(self.n_atoms, self.n_atoms)
         # - preference matrix:    preference matrix indicates the priority of response units to each atom
         self.P       = np.array(P, dtype=int) if P is not None else np.random.rand(self.n_atoms, self.n_atoms).argsort()
 
-        assert self.n_atoms == self.Lam.shape[0] == self.Mu.shape[0] == \
-               self.T.shape[0] == self.T.shape[1] == self.P.shape[0] == self.P.shape[1], \
+        assert self.n_atoms == self.Lam.shape[0] == self.T.shape[0] == \
+               self.T.shape[1] == self.P.shape[0] == self.P.shape[1], \
                "Invalid shape of input parameters."
 
         # Model status
@@ -114,7 +112,7 @@ class HypercubeQ(object):
                     downward_sum = 0
                     for i in range(2 ** self.n_atoms):
                         # the k-th response unit that changed status (upward and downward in total)
-                        changed_k = np.nonzero(self.S[i] - self.S[j])[0]
+                        changed_k = np.nonzero(self.S[j] - self.S[i])[0]
                         # only consider one-step changed states
                         if len(changed_k) == 1:
                             # upward transition state
@@ -122,9 +120,9 @@ class HypercubeQ(object):
                                 upward_sum += Pi_n[i] * self.Lam_ij[(i,j)]
                             # downward transition state
                             elif (self.S[j] - self.S[i]).sum() == -1:
-                                downward_sum += Pi_n[i] * self.Mu[changed_k[0]]
+                                downward_sum += Pi_n[i] * 1 # self.Mu[changed_k[0]]
                     # update the j-th state in Pi_{n+1}
-                    Pi_n_1[j] = (upward_sum + downward_sum) / (self.Lam.sum() + (self.Mu * self.S[j]).sum())
+                    Pi_n_1[j] = (upward_sum + downward_sum) / (self.Lam.sum() + self.S[j].sum())
             return Pi_n_1
         
         # initialize all states
@@ -207,6 +205,6 @@ if __name__ == "__main__":
     # print(hq.S[Upn[k, i]])
 
     # * CHECK STEADY STATE PROBABILITY
-    hq = HypercubeQ(n_atoms=5, Mu=np.ones(5), max_iter=10)
+    hq = HypercubeQ(n_atoms=5, max_iter=10)
     print(hq.Pi)
     print(hq.Pi.sum())
