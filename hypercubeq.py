@@ -11,8 +11,10 @@ class HypercubeQ(object):
     """
 
 
-    def __init__(self, n_atoms, Lam=None, T=None, P=None, max_iter=10):
+    def __init__(self, n_atoms, Lam=None, T=None, P=None, cap="zero", max_iter=10):
         # Model configuration
+        # - line capacity
+        self.cap     = cap
         # - number of geographical atoms (response units)
         self.n_atoms = n_atoms                    
         # - arrival rates vector: arrival rates for each atom
@@ -32,7 +34,10 @@ class HypercubeQ(object):
         # - upward transition rates matrix: a dictionary { (i,j) : lam_ij } (due to the sparsity of the matrix in nature)
         self.Lam_ij = self._upward_transition_rates()
         # - steady-state probability for unsaturate states
-        self.Pi     = self._steady_state_probabilities(max_iter=max_iter)
+        self.Pi     = self._steady_state_probabilities(cap=self.cap, max_iter=max_iter)
+        # - steady-state probability for saturate states (only for infinite-line capacity)
+        if cap == "inf":
+            self.Pi_Q = ...
 
     def _tour(self):
         """
@@ -127,8 +132,6 @@ class HypercubeQ(object):
         
         # initialize all states
         Pi = init_steady_state_prob(cap)
-        print(Pi)
-        print(Pi.sum())
         # update all states except for all idle state, all busy state
         for n in range(max_iter):
             Pi = iter_steady_state_prob(Pi)
@@ -168,18 +171,15 @@ class HypercubeQ(object):
 if __name__ == "__main__":
     n_atoms = 3
     # Lam     = [1, 1, 1, 1, 1]
-    # Mu      = [1, 1, 1, 1, 1]
     # P       = [[0, 1, 2, 3, 4],
     #            [1, 0, 2, 3, 4],
     #            [2, 0, 1, 3, 4],
     #            [3, 0, 1, 2, 4],
     #            [4, 0, 1, 2, 3]]
     Lam     = [1, 1, 1]
-    Mu      = [1, 1, 1]
     P       = [[0, 1, 2],
                [1, 0, 2],
                [2, 0, 1]]
-
 
     # # * CHECK UPWARD TRANSITION RATES
     # hq = HypercubeQ(n_atoms, Lam=Lam, Mu=Mu, P=P)
