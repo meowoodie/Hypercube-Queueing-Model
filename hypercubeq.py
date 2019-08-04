@@ -7,11 +7,11 @@ class HypercubeQ(object):
     """
     Hypercube Queueing Model with Infinite-line Capacity
 
-    * For the sake of simplication, 
+    * For the sake of simplication, \eta_{ij} = 1
     """
 
 
-    def __init__(self, n_atoms, Lam=None, T=None, P=None, cap="zero", max_iter=10):
+    def __init__(self, n_atoms, Lam=None, T=None, P=None, cap="zero", max_iter=10, q_len=100):
         # Model configuration
         # - line capacity
         self.cap     = cap
@@ -30,14 +30,17 @@ class HypercubeQ(object):
 
         # Model status
         # - state space ordered as a sequence represents a complete unit-step tour of the hypercube
-        self.S      = self._tour()
+        self.S                  = self._tour()
+        self.all_busy_state_idx = np.array([ self.S[i].sum() for i in range(2 ** self.n_atoms) ]).argmax()
+        self.all_zero_state_idx = 0
         # - upward transition rates matrix: a dictionary { (i,j) : lam_ij } (due to the sparsity of the matrix in nature)
         self.Lam_ij = self._upward_transition_rates()
         # - steady-state probability for unsaturate states
-        self.Pi     = self._steady_state_probabilities(cap=self.cap, max_iter=max_iter)
+        self.Pi     = self._steady_state_probs(cap=self.cap, max_iter=max_iter)
         # - steady-state probability for saturate states (only for infinite-line capacity)
-        if cap == "inf":
-            self.Pi_Q = ...
+        self.Pi_Q   = np.array([ self._steady_state_probs_in_queue(j) for j in range(1, q_len) ]) if self.cap == "inf" else []
+        # - fraction 
+        self.Rho_1, self.Rho_2 = self._dispatch_fraction(cap=self.cap)
 
     def _tour(self):
         """
@@ -76,8 +79,37 @@ class HypercubeQ(object):
                 if self.S[i].sum() < self.n_atoms:
                     Lam_ij[(i,Upoptn[k,i])] += self.Lam[k]
         return Lam_ij
+    
+    def __upward_optimal_neighbor(self):
+        """
+        A function that collects the upward optimal neighbor given atom k at state i according 
+        to the dispatch policy.
+        """
+        # helper function that returns the state index given the state
+        def state_index(s):
+            for i in range(2 ** self.n_atoms):
+                if np.count_nonzero(s - self.S[i]) == 0:
+                    return i
 
-    def _steady_state_probabilities(self, cap="zero", max_iter=100):
+        # calculate upward optimal neighbors matrix
+        Upopts = np.zeros((self.n_atoms, 2 ** self.n_atoms), dtype=int)
+        for k in range(self.n_atoms):                # for each atom k
+            for i in range(2 ** self.n_atoms):       # for each state i (last state is excluded)
+                idle_u = np.where(self.S[i] == 0)[0] # indices of idle response units
+                if len(idle_u) != 0:
+                    disp_u = self.P[k]               # ordered indices of response units for atom k according to dispatch policy 
+                    for u in disp_u:                 # find out the first available idle unit to be assigned to atom k
+                        if u in idle_u:
+                            add         = np.zeros(self.n_atoms, dtype=int)
+                            add[u]      = 1
+                            upopts      = self.S[i] + add
+                            Upopts[k,i] = state_index(upopts)
+                            break
+                else:
+                    Upopts[k,i] = -1                 # for the all busy state, there is no upward neighbor
+        return Upopts
+
+    def _steady_state_probs(self, cap, max_iter):
         """
         A iterative procedure for obtaining the steady state probability on the hypercube. In a manner
         similar to point Jacobi iteration, we use the equation of detailed balance to determine the 
@@ -94,10 +126,11 @@ class HypercubeQ(object):
                     self.Lam.sum() ** j / math.factorial(j)
                     for j in range(self.n_atoms + 1) ]) \
                     if cap == "zero" else \
-                    sum([ (self.Lam.sum() ** j / math.factorial(j)) + 
-                    (self.Lam.sum() ** self.n_atoms / math.factorial(self.n_atoms)) * 
-                    (self.Lam.sum() / self.n_atoms / (1 - self.Lam.sum() / self.n_atoms)) 
-                    for j in range(self.n_atoms + 1) ])
+                    sum([ 
+                        (self.Lam.sum() ** j / math.factorial(j)) 
+                        for j in range(self.n_atoms + 1) ]) + \
+                    (self.Lam.sum() ** self.n_atoms / math.factorial(self.n_atoms)) * \
+                    (self.Lam.sum() / self.n_atoms / (1 - self.Lam.sum() / self.n_atoms))
                 n_states    = sum([ 1 for i in range(2 ** self.n_atoms) if self.S[i].sum() == n_busy ])
                 init_P      = (self.Lam.sum() ** n_busy / math.factorial(n_busy)) / denominator / n_states
                 for i in range(2 ** self.n_atoms):
@@ -136,75 +169,90 @@ class HypercubeQ(object):
         for n in range(max_iter):
             Pi = iter_steady_state_prob(Pi)
         return Pi
+    
+    def _steady_state_probs_in_queue(self, n_waiting):
+        """
+        Return the probability of exactly `n_waiting` calls in queue, assuming steady state 
+        conditions.
+        """
+        assert n_waiting >= 1, "n_waiting should larger than 1."
+        denominator = sum([ 
+            (self.Lam.sum() ** j / math.factorial(j)) 
+            for j in range(self.n_atoms + 1) ]) + \
+            (self.Lam.sum() ** self.n_atoms / math.factorial(self.n_atoms)) * \
+            (self.Lam.sum() / self.n_atoms / (1 - self.Lam.sum() / self.n_atoms))
+        Pi_Q_j = (self.Lam.sum() ** self.n_atoms / math.factorial(self.n_atoms)) * \
+                 (self.Lam.sum() / self.n_atoms) ** n_waiting / denominator
+        return Pi_Q_j
 
-    def __upward_optimal_neighbor(self):
+    def _dispatch_fraction(self, cap):
         """
-        A function that collects the upward optimal neighbor given atom k at state i according 
-        to the dispatch policy.
+        Return the fraction of dispatches that send a unit n to a particular geographical atom j
+        as a matrix Rho. 
+
+        * For zero-line capacity queue, the final result is Rho_1 while Rho_2 is 0.
+        * For infinite-line capacity queue, 
+          Rho_1 is the fraction of all dispatches that send unit n to atom j and incur no queue delay,
+          Rho_2 is the fraction of all dispatches that send unit n to atom j and do incur a positive
+          queue delay.
+          The final result is the sum of Rho_1 and Rho_2.
         """
-        # helper function that returns the state index given the state
-        def state_index(s):
+        # a helper function that returns the set of states in which unit n is an optimal unit to 
+        # assign to a call from atom j.
+        def states_optimal_dispatch(n, j):
+            states = []
             for i in range(2 ** self.n_atoms):
-                if np.count_nonzero(s - self.S[i]) == 0:
-                    return i
+                disp_u = self.P[j]
+                idle_u = np.where(self.S[i] == 0)[0]
+                if n in idle_u:
+                    priority_u_n     = disp_u.tolist().index(n)                             # priority of unit n 
+                    priority_u_other = [ 
+                        disp_u.tolist().index(u) 
+                        for u in idle_u if u != n]                                          # priority of other units
+                    if len(priority_u_other) == 0 or priority_u_n <= min(priority_u_other): # if unit n has the highest priority
+                        states.append(i)
+            return states
 
-        # calculate upward optimal neighbors matrix
-        Upopts = np.zeros((self.n_atoms, 2 ** self.n_atoms), dtype=int)
-        for k in range(self.n_atoms):                # for each atom k
-            for i in range(2 ** self.n_atoms):       # for each state i (last state is excluded)
-                idle_s = np.where(self.S[i] == 0)[0] # indices of idle response units
-                if len(idle_s) != 0:
-                    disp_s = self.P[k]               # ordered indices of response units for atom k according to dispatch policy 
-                    for s in disp_s:
-                        if s in idle_s:
-                            add         = np.zeros(self.n_atoms, dtype=int)
-                            add[s]      = 1
-                            upopts      = self.S[i] + add
-                            Upopts[k,i] = state_index(upopts)
-                            break
+        # E_{nj} dictionary
+        E_nj = {}
+        for n in range(self.n_atoms):
+            for j in range(self.n_atoms):
+                E_nj[(n,j)] = states_optimal_dispatch(n, j)
+        E_nj[(n,j)] = states_optimal_dispatch(n, j)
+        # fraction of all dispatches that send unit n to atom j and incur no queue delay
+        Rho_1 = np.zeros((self.n_atoms, self.n_atoms), dtype=float)
+        # fraction of all dispatches that send unit n to atom j and do incur a positive queue delay
+        Rho_2 = np.zeros((self.n_atoms, self.n_atoms), dtype=float)
+        # calculate Rho_1 and Rho_2
+        for n in range(self.n_atoms):
+            for j in range(self.n_atoms):
+                if cap == "zero":
+                    denominator = self.Lam.sum() * (1 - self.Pi[self.all_busy_state_idx])
+                    numerator   = sum([ self.Lam[j] * self.Pi[i] 
+                        for i in E_nj[(n, j)] ])
+                    Rho_1[n,j]  = numerator / denominator
                 else:
-                    Upopts[k,i] = -1                 # for the all busy state, there is no upward neighbor
-        return Upopts
+                    # the probability that a randomly arriving call incurs a queue delay
+                    Pi_Q_prime  = self.Pi_Q.sum() + self.Pi[self.all_busy_state_idx]
+                    Rho_2[n,j]  = self.Lam[j] / self.Lam.sum() * Pi_Q_prime / self.n_atoms
+                    Rho_1[n,j]  = sum([ self.Lam[j] / self.Lam.sum() * self.Pi[i] 
+                        for i in E_nj[(n, j)] ])
+        return  Rho_1, Rho_2
 
 
             
 if __name__ == "__main__":
     n_atoms = 3
-    # Lam     = [1, 1, 1, 1, 1]
-    # P       = [[0, 1, 2, 3, 4],
-    #            [1, 0, 2, 3, 4],
-    #            [2, 0, 1, 3, 4],
-    #            [3, 0, 1, 2, 4],
-    #            [4, 0, 1, 2, 3]]
     Lam     = [1, 1, 1]
     P       = [[0, 1, 2],
                [1, 0, 2],
                [2, 0, 1]]
 
-    # # * CHECK UPWARD TRANSITION RATES
-    # hq = HypercubeQ(n_atoms, Lam=Lam, Mu=Mu, P=P)
-    # print(hq.S)
-    # state_order = [0, 7, 3, 1, 4, 6, 2, 5]
-    # Lam_ij_dict = hq._upward_transition_rates()
-    # Lam_ij_mat  = np.zeros((2 ** hq.n_atoms, 2 ** hq.n_atoms))
-    # for key in Lam_ij_dict:
-    #     i = state_order.index(key[0])
-    #     j = state_order.index(key[1])
-    #     Lam_ij_mat[i,j] = Lam_ij_dict[key]
-    # print(Lam_ij_mat)
-
-    # # * CHECK UPWARD OPTIMAL NEIGHBORS
-    # hq  = HypercubeQ(n_atoms, Lam=Lam, Mu=Mu, P=P)
-    # print(hq.S)
-    # Upn = hq._upward_optimal_neighbor()
-    # k   = 2
-    # i   = 5
-    # print(hq.S[i])
-    # print(k)
-    # print("neighbors")
-    # print(hq.S[Upn[k, i]])
-
-    # * CHECK STEADY STATE PROBABILITY
-    hq = HypercubeQ(n_atoms=5, max_iter=10)
+    hq = HypercubeQ(n_atoms=6, cap="inf", max_iter=10)
     print(hq.Pi)
     print(hq.Pi.sum())
+    # print(hq.Pi_Q)
+    # print(hq.Pi.sum() + hq.Pi_Q.sum())
+    print(hq.Rho_1)
+    print(hq.Rho_2)
+    print(hq.Rho_1.sum() + hq.Rho_2.sum())
