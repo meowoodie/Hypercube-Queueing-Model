@@ -36,11 +36,17 @@ class HypercubeQ(object):
         # - upward transition rates matrix: a dictionary { (i,j) : lam_ij } (due to the sparsity of the matrix in nature)
         self.Lam_ij = self._upward_transition_rates()
         # - steady-state probability for unsaturate states
-        self.Pi     = self._steady_state_probs(cap=self.cap, max_iter=max_iter)
+        self.Pi         = self._steady_state_probs(cap=self.cap, max_iter=max_iter)
         # - steady-state probability for saturate states (only for infinite-line capacity)
-        self.Pi_Q   = np.array([ self._steady_state_probs_in_queue(j) for j in range(1, q_len) ]) if self.cap == "inf" else []
-        # - fraction 
+        self.Pi_Q       = np.array([ self._steady_state_probs_in_queue(j) for j in range(1, q_len) ]) if self.cap == "inf" else []
+        # the probability that a randomly arriving call incurs a queue delay
+        self.Pi_Q_prime = self.Pi_Q.sum() + self.Pi[self.all_busy_state_idx] if self.cap == "inf" else 0
+
+        # Model evaluation metrics
+        # - fraction of dispatches that send a unit n to a particular geographical atom j
         self.Rho_1, self.Rho_2 = self._dispatch_fraction(cap=self.cap)
+        # - average travel time of each disptach for each response unit
+        self.Tu = self._average_travel_time(cap=self.cap)
 
     def _tour(self):
         """
@@ -232,27 +238,48 @@ class HypercubeQ(object):
                         for i in E_nj[(n, j)] ])
                     Rho_1[n,j]  = numerator / denominator
                 else:
-                    # the probability that a randomly arriving call incurs a queue delay
-                    Pi_Q_prime  = self.Pi_Q.sum() + self.Pi[self.all_busy_state_idx]
-                    Rho_2[n,j]  = self.Lam[j] / self.Lam.sum() * Pi_Q_prime / self.n_atoms
+                    Rho_2[n,j]  = self.Lam[j] / self.Lam.sum() * self.Pi_Q_prime / self.n_atoms
                     Rho_1[n,j]  = sum([ self.Lam[j] / self.Lam.sum() * self.Pi[i] 
                         for i in E_nj[(n, j)] ])
         return  Rho_1, Rho_2
 
+    def _average_travel_time(self, cap):
+        """
+        Return the average travel time of each dispatch for each response unit.
+        """
+        Tu  = np.zeros(self.n_atoms)
+        f   = self.Lam / self.Lam.sum()
+        T_Q = np.matmul(f, np.matmul(self.T, f))
+        for n in range(self.n_atoms):
+            if cap == "zero":
+                numerator   = (self.T[n,:] * self.Rho_1[n,:]).sum() 
+                denominator = self.Rho_1[n,:].sum()
+                Tu[n]       = numerator / denominator
+            else:
+                numerator   = (self.T[n,:] * self.Rho_1[n,:]).sum() + T_Q * self.Pi_Q_prime / self.n_atoms
+                denominator = self.Rho_1[n,:].sum() + self.Pi_Q_prime / self.n_atoms
+                Tu[n]       = numerator / denominator
+        return Tu
+
 
             
 if __name__ == "__main__":
+    np.random.seed(0)
+
     n_atoms = 3
     Lam     = [1, 1, 1]
     P       = [[0, 1, 2],
                [1, 0, 2],
                [2, 0, 1]]
 
-    hq = HypercubeQ(n_atoms=6, cap="inf", max_iter=10)
+    hq = HypercubeQ(n_atoms=6, cap="zero", max_iter=10)
     print(hq.Pi)
     print(hq.Pi.sum())
     # print(hq.Pi_Q)
     # print(hq.Pi.sum() + hq.Pi_Q.sum())
+    
     print(hq.Rho_1)
     print(hq.Rho_2)
     print(hq.Rho_1.sum() + hq.Rho_2.sum())
+
+    print(hq.Tu)
