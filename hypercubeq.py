@@ -5,13 +5,29 @@ from collections import defaultdict
 
 class HypercubeQ(object):
     """
-    Hypercube Queueing Model with Infinite-line Capacity
+    Hypercube Queueing Model with Zero-line or Infinite-line Capacity
 
-    * For the sake of simplication, \eta_{ij} = 1
+    For the ease of the implementation, there are two simplification comparing to the full model:
+    * 1. We consider eta_{ij} = 1, i.e., there is only one optimal unit for each dispatch.
+    * 2. We consider t_{ij} = tau_{ij}, i.e., the unit is always in its home atom when it is available.
+
+    Reference:
+    * Richard C. Larson. A hypercube queuing model for facility location and redistricting in urban 
+      emergency services. Computers & Operations Research, 1(1):67 – 95, 1974.
     """
 
 
     def __init__(self, n_atoms, Lam=None, T=None, P=None, cap="zero", max_iter=10, q_len=100):
+        """
+        Params:
+        * n_atoms:  number of geographical atoms (= number of response units),
+        * Lam:      a vector of arrival rates of each geographical atoms,
+        * T:        a matrix of average traffic time per dispatch (from atom i to atom j),
+        * P:        a matrix of dispatch policy (the n-th unit at atom j),
+        * cap:      `zero` or `inf`,
+        * max_iter: maximum number of iteration for obtaining the steady-state probabilities,
+        * q_len:    the reserved length of the queue.
+        """
         # Model configuration
         # - line capacity
         self.cap     = cap
@@ -65,8 +81,8 @@ class HypercubeQ(object):
         for n in range(1, self.n_atoms):
             S[i:i+m,n]  = 1                                 # add "one" at i-th position
             S[i:i+m,:n] = np.flip(S[int(i-m):i,:n], axis=0) # step backwards
-            i               += m                            # update index of the state
-            m               *= 2                            # update the number of states that needs step backwards
+            i          += m                                 # update index of the state
+            m          *= 2                                 # update the number of states that needs step backwards
         return S
 
     def _upward_transition_rates(self):
@@ -277,7 +293,7 @@ if __name__ == "__main__":
     print(hq.Pi.sum())
     # print(hq.Pi_Q)
     # print(hq.Pi.sum() + hq.Pi_Q.sum())
-    
+
     print(hq.Rho_1)
     print(hq.Rho_2)
     print(hq.Rho_1.sum() + hq.Rho_2.sum())
