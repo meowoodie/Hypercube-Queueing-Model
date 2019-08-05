@@ -1,5 +1,4 @@
 import math
-import arrow
 import numpy as np
 from collections import defaultdict
 
@@ -276,26 +275,3 @@ class HypercubeQ(object):
                 denominator = self.Rho_1[n,:].sum() + self.Pi_Q_prime / self.n_atoms
                 Tu[n]       = numerator / denominator
         return Tu
-
-
-            
-if __name__ == "__main__":
-    np.random.seed(0)
-
-    n_atoms = 3
-    Lam     = [1, 1, 1]
-    P       = [[0, 1, 2],
-               [1, 0, 2],
-               [2, 0, 1]]
-
-    hq = HypercubeQ(n_atoms=6, cap="zero", max_iter=10)
-    print(hq.Pi)
-    print(hq.Pi.sum())
-    # print(hq.Pi_Q)
-    # print(hq.Pi.sum() + hq.Pi_Q.sum())
-
-    print(hq.Rho_1)
-    print(hq.Rho_2)
-    print(hq.Rho_1.sum() + hq.Rho_2.sum())
-
-    print(hq.Tu)
