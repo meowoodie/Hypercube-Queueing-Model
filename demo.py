@@ -34,7 +34,7 @@ print(hq.Tu)
 
 
 
-# USER CUSTOMIZED MODEL WITH ZERO-LINE CAPACITY
+# USER CUSTOMIZED MODEL WITH INFINITE-LINE CAPACITY
 # - model configuration
 n_atoms = 3
 Lam     = [1, 1, 1]
