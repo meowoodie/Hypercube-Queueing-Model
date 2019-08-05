@@ -8,7 +8,7 @@ np.random.seed(0)
 # RANDOM INITIALIZED MODEL WITH ZERO-LINE CAPACITY
 # - model initialization
 start_t = arrow.now()
-hq      = HypercubeQ(n_atoms=20, cap="zero", max_iter=10)
+hq      = HypercubeQ(n_atoms=15, cap="zero", max_iter=10)
 end_t   = arrow.now()
 print("Calculation time: [%s]" % (end_t - start_t))
 # - steady-state probability
@@ -20,9 +20,9 @@ print(hq.Tu)
 
 
 
-# RANDOM INITIALIZED MODEL WITH ZERO-LINE CAPACITY
+# RANDOM INITIALIZED MODEL WITH INFINITE-LINE CAPACITY
 # - model initialization
-hq = HypercubeQ(n_atoms=20, cap="inf", max_iter=10)
+hq = HypercubeQ(n_atoms=15, cap="inf", max_iter=10)
 # - steady-state probability
 print(hq.Pi)    # steady-state probability for unsaturate states
 print(hq.Pi_Q)  # steady-state probability for saturate states (only for infinite-line capacity)
@@ -34,7 +34,7 @@ print(hq.Tu)
 
 
 
-# USER CUSTOMIZED MODEL WITH INFINITE-LINE CAPACITY
+# USER CUSTOMIZED MODEL WITH ZERO-LINE CAPACITY
 # - model configuration
 n_atoms = 3
 Lam     = [1, 1, 1]
