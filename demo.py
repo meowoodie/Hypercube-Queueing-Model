@@ -8,13 +8,15 @@ np.random.seed(0)
 # RANDOM INITIALIZED MODEL WITH ZERO-LINE CAPACITY
 # - model initialization
 start_t = arrow.now()
-hq      = HypercubeQ(n_atoms=15, cap="zero", max_iter=10)
+hq      = HypercubeQ(n_atoms=5, cap="zero", max_iter=10)
 end_t   = arrow.now()
 print("Calculation time: [%s]" % (end_t - start_t))
 # - steady-state probability
 print(hq.Pi)
+print(hq.Pi.sum())
 # - fraction of dispatches that send a unit n to a particular geographical atom j
 print(hq.Rho_1)
+print(hq.Rho_1.sum())
 # - average travel time per dispatch for each unit
 print(hq.Tu)
 
@@ -22,13 +24,15 @@ print(hq.Tu)
 
 # RANDOM INITIALIZED MODEL WITH INFINITE-LINE CAPACITY
 # - model initialization
-hq = HypercubeQ(n_atoms=15, cap="inf", max_iter=10)
+hq = HypercubeQ(n_atoms=5, cap="inf", max_iter=10)
 # - steady-state probability
 print(hq.Pi)    # steady-state probability for unsaturate states
 print(hq.Pi_Q)  # steady-state probability for saturate states (only for infinite-line capacity)
+print(hq.Pi.sum() + hq.Pi_Q.sum())
 # - fraction of dispatches that send a unit n to a particular geographical atom j
 print(hq.Rho_1) # fraction of all dispatches that send unit n to atom j and incur no queue delay
 print(hq.Rho_2) # fraction of all dispatches that send unit n to atom j and do incur a positive
+print(hq.Rho_1.sum() + hq.Rho_2.sum())
 # - average travel time per dispatch for each unit
 print(hq.Tu)
 
@@ -46,7 +50,9 @@ T       = np.random.rand(n_atoms, n_atoms)
 hq = HypercubeQ(n_atoms=3, Lam=Lam, P=P, T=T, cap="zero", max_iter=10)
 # - steady-state probability
 print(hq.Pi)
+print(hq.Pi.sum())
 # - fraction of dispatches that send a unit n to a particular geographical atom j
 print(hq.Rho_1)
+print(hq.Rho_1.sum())
 # - average travel time per dispatch for each unit
 print(hq.Tu)
