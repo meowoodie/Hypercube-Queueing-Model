@@ -3,7 +3,10 @@ Hypercube Queueing Model
 
 This repository is an Python implementation of hypercube queueing model proposed by Richard C. Larson (1974). It was originally implemented for analyzing the operational dynamics of Atlanta patrol system in our research [Atlanta zone redesign](https://github.com/meowoodie/Zoning-Analysis). See more details in the implementation `hypercubeq.py`.
 
-![hypercube](https://github.com/meowoodie/Hypercube-Queueing-Model/blob/master/img/hypercube.png)
+<!-- ![hypercube](https://github.com/meowoodie/Hypercube-Queueing-Model/blob/master/img/hypercube.png) -->
+<p align="center">
+  <img width="400" height="300" src="https://github.com/meowoodie/Hypercube-Queueing-Model/blob/master/img/hypercube.png">
+</p>
 
 # Demo
 
