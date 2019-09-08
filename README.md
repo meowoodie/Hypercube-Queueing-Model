@@ -5,7 +5,7 @@ This repository is an Python implementation of hypercube queueing model proposed
 
 <!-- ![hypercube](https://github.com/meowoodie/Hypercube-Queueing-Model/blob/master/img/hypercube.png) -->
 <p align="center">
-  <img width="400" height="300" src="https://github.com/meowoodie/Hypercube-Queueing-Model/blob/master/img/hypercube.png">
+  <img width="450" height="300" src="https://github.com/meowoodie/Hypercube-Queueing-Model/blob/master/img/hypercube.png">
 </p>
 
 # Demo
